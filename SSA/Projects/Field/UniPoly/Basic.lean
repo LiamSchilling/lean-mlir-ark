@@ -13,11 +13,11 @@ The type system enforces two distinct representations whose members are semantic
   to their evaluations.
 -/
 
-namespace UniPoly
-
 open LeanMLIR Polynomial
 
 variable {F : Type} [Field F] {nodes : Finset F} [Nonempty nodes]
+
+namespace UniPoly
 
 /-- The types of representations of less-than-`#nodes`-degree polynomials in the dialect:
 - `coeffs`: the `#nodes`-many coefficients representation

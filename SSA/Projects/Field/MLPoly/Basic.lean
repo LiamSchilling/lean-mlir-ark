@@ -12,10 +12,10 @@ The type system enforces two distinct representations whose members are semantic
   to their evaluations.
 -/
 
-namespace MLPoly
-
 open LeanMLIR
 
 variable {F : Type} [Field F]
+
+namespace MLPoly
 
 end MLPoly

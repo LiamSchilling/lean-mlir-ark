@@ -10,10 +10,10 @@ In this way, `Vec` may be lowered generically,
 with the underlying field logic specified by the `Flop` lowering.
 -/
 
-namespace Vec
-
 open LeanMLIR
 
 variable {F : Type} [Field F]
+
+namespace Vec
 
 end Vec

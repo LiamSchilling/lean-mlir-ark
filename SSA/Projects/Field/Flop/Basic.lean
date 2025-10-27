@@ -10,9 +10,9 @@ It is up to the underlying dialect to implement integer operations.
 
 This dialect will be the basis for a number of extension dialects
 for objects that contain field elements:
-- Vectors: `FieldStructs\Vector\Basic.lean`
-- Univariate polynomials: `FieldStructs\UniPoly\Basic.lean`
-- Multilinear polynomials: `FieldStructs\MLPoly\Basic.lean`
+- Vectors: `Field\Vector\Basic.lean`
+- Univariate polynomials: `Field\UniPoly\Basic.lean`
+- Multilinear polynomials: `Field\MLPoly\Basic.lean`
 
 Instances of `Flop` with specialized fields should be lowered to an integer dialect.
 This will allow the extension dialects to generically lower to a tensor dialect

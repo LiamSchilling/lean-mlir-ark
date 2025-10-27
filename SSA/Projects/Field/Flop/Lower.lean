@@ -9,10 +9,10 @@ Extension dialects based on `Flop` will use this lowering
 to scaffold their lowering to a tensor dialect.
 -/
 
-namespace Flop
-
 open LeanMLIR
 
 variable {F : Type} [Field F]
+
+namespace Flop
 
 end Flop
