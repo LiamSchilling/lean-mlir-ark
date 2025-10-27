@@ -1,4 +1,4 @@
-import SSA.Projects.FieldStructs.Field.Basic
+import SSA.Projects.Field.Flop.Basic
 
 /-!
 # Lowering Finite-Field Dialects to an Integer Dialect

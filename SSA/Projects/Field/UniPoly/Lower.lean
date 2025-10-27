@@ -1,5 +1,5 @@
-import SSA.Projects.FieldStructs.UniPoly.Basic
-import SSA.Projects.FieldStructs.Vector.Basic
+import SSA.Projects.Field.UniPoly.Basic
+import SSA.Projects.Field.Vector.Basic
 
 /-!
 # Lowering Univariate Polynomial Dialect to a Vector Dialect

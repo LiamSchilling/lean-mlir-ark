@@ -1,5 +1,5 @@
-import SSA.Projects.FieldStructs.MLPoly.Basic
-import SSA.Projects.FieldStructs.Vector.Basic
+import SSA.Projects.Field.Flop.Basic
+import SSA.Projects.Field.Vector.Basic
 
 /-!
 # Lowering Multilinear Polynomial Dialect to a Vector Dialect

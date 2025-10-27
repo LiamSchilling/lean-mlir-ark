@@ -1,4 +1,4 @@
-import SSA.Projects.FieldStructs.Vector.Basic
+import SSA.Projects.Field.Flop.Basic
 
 /-!
 # Lowering Vector Dialect to a Tensor Dialect
