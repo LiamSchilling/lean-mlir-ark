@@ -23,11 +23,9 @@ open LeanMLIR
 
 variable {F : Type} [Field F]
 
-variable {Ty' Op' : Type} {int' : Ty'}
-variable [DecidableEq Ty'] [TyDenote Ty']
+variable {Ty' Op' : Type} {int' : Ty'} [DecidableEq Ty'] [TyDenote Ty']
 
-variable {D : Dialect} {int : D.Ty}
-variable [DecidableEq D.Ty] [TyDenote D.Ty]
+variable {D : Dialect} {int : D.Ty} [DecidableEq D.Ty] [TyDenote D.Ty] {coeInt : ⟦int⟧ → ℤ}
 variable [DialectSignature D] [DialectDenote D] [DialectPrint D] [P : DialectParse D 0]
 
 namespace Flop
@@ -58,17 +56,11 @@ instance : DecidableEq (Ty F Ty' int')
 | .f, .f => isTrue rfl
 
 /-- A map from types in the dialect to the Lean types of their semantic interpretations.
-The semantic interpretations of types from the underlying dialect are preserved,
-except for `coe int'` which is interpreted as `ℤ`. -/
+The semantic interpretations of types from the underlying dialect are preserved. -/
 instance : TyDenote (Ty F Ty' int') where
 toType
-| .coe ty' => if ty' = int' then ℤ else ⟦ty'⟧
+| .coe ty' => ⟦ty'⟧
 | .f => F
-
-omit [Field F] in
-lemma denote_int (Ty' : Type) {int' : Ty'} [DecidableEq Ty'] [TyDenote Ty'] :
-    TyDenote.toType (Ty.coe int' : Ty F Ty' int') = ℤ := by
-  simp [TyDenote.toType]
 
 /-- The operations in the dialect:
 - `coe`: an operation in the underlying dialect
@@ -148,7 +140,7 @@ end Flop
 
 /-- The dialect, which wraps the underlying dialect `D`. -/
 @[reducible]
-def Flop (F : Type) (D : Dialect) (int : D.Ty) : Dialect where
+def Flop (F : Type) (D : Dialect) [TyDenote D.Ty] (int : D.Ty) (_ : ⟦int⟧ → ℤ) : Dialect where
 Op := Flop.Op F D.Op
 Ty := Flop.Ty F D.Ty int
 m := D.m
@@ -156,24 +148,28 @@ m := D.m
 namespace Flop
 
 /-- The type signatures for the dialect. -/
-instance : DialectSignature (Flop F D int) where
+instance : DialectSignature (Flop F D int coeInt) where
 signature := Op.signature <| DialectSignature.signature
 
 /-- Coerces an expression from the underlying dialect. -/
-def coeExpr (e : Expr D (lowerCtxt Γ) eff' tys') : Expr (Flop F D int) Γ eff' (tys'.map .coe) :=
+def coeExpr
+    (expr : Expr D (lowerCtxt Γ) eff' tys') :
+    Expr (Flop F D int coeInt) Γ eff' (tys'.map .coe) :=
   Expr.mk
-    (.coe e.op)
-    (by simp[DialectSignature.returnTypes, signature, e.ty_eq])
-    (by simp[DialectSignature.effectKind, signature]; exact e.eff_le)
+    (.coe expr.op)
+    (by simp[DialectSignature.returnTypes, signature, expr.ty_eq])
+    (by simp[DialectSignature.effectKind, signature]; exact expr.eff_le)
     sorry
     sorry
 
 /-- Coerces an expression bundled with its type and effects from the underlying dialect. -/
-def coeSumExpr : (Σ eff ty, Expr D (lowerCtxt Γ) eff ty) → (Σ eff ty, Expr (Flop F D int) Γ eff ty)
-| ⟨eff', tys', e⟩ => ⟨eff', tys'.map .coe, coeExpr e⟩
+def coeSumExpr :
+    (Σ eff ty, Expr D (lowerCtxt Γ) eff ty) →
+    (Σ eff ty, Expr (Flop F D int coeInt) Γ eff ty)
+| ⟨eff', tys', expr⟩ => ⟨eff', tys'.map .coe, coeExpr expr⟩
 
 /-- The semantics for the dialect. -/
-instance : DialectDenote (Flop F D int) where
+instance : DialectDenote (Flop F D int coeInt) where
 denote
 | .coe op', arg, _ => sorry
 | .zero, _, _ => [0]ₕ
@@ -184,12 +180,12 @@ denote
 | .mul, arg, _ => [(fun args => args.1 * args.2) arg.toPair]ₕ
 | .div, arg, _ => [(fun args => args.1 * args.2⁻¹) arg.toPair]ₕ
 | .inv, arg, _ => [arg.toSingle⁻¹]ₕ
-| .zmul, arg, _ => [(fun args => (denote_int D.Ty ▸ args.1 : ℤ) • args.2) arg.toPair]ₕ
-| .pow, arg, _ => [(fun args => args.1 ^ (denote_int D.Ty ▸ args.2 : ℤ)) arg.toPair]ₕ
-| .ofint, arg, _ => [(denote_int D.Ty ▸ arg.toSingle : ℤ)]ₕ
+| .zmul, arg, _ => [(fun args => coeInt args.1 • args.2) arg.toPair]ₕ
+| .pow, arg, _ => [(fun args => args.1 ^ coeInt args.2) arg.toPair]ₕ
+| .ofint, arg, _ => [coeInt arg.toSingle]ₕ
 
 /-- The pretty printer for the dialect. -/
-instance : DialectPrint (Flop F D int) where
+instance : DialectPrint (Flop F D int coeInt) where
 printTy
 | .coe ty' => DialectPrint.printTy ty'
 | .f => "field.elem"
@@ -209,14 +205,15 @@ printOpName
 printAttributes
 | .coe op' => DialectPrint.printAttributes op'
 | _ => ""
-printReturn _ := "return"--DialectPrint.printReturn <| tys.filterMap Ty.lower
+printReturn tys := DialectPrint.printReturn <| tys.filterMap Ty.lower
+printFunc tys := DialectPrint.printFunc <| tys.filterMap Ty.lower
 dialectName := s!"Flop({DialectPrint.dialectName D})"
 
-local instance : ToString (Flop F D int).Ty :=
+local instance : ToString (Flop F D int coeInt).Ty :=
   DialectPrint.instToStringTy
 
 /-- The parser for the dialect from an MLIR AST. -/
-instance : DialectParse (Flop F D int) 0 where
+instance : DialectParse (Flop F D int coeInt) 0 where
 mkTy
 | .undefined "field.elem" => return .f
 | tyName => return .coe <| ←P.mkTy tyName
@@ -249,9 +246,7 @@ instDialectDenote : DialectDenote D
 instDialectPrint : DialectPrint D
 instDialectParse : DialectParse D 0
 int : D.Ty
-
-abbrev FlopIdent.MkFlop (flop : FlopIdent) : Dialect :=
-  Flop flop.F flop.D flop.int
+coeInt : ⟦int⟧ → ℤ
 
 instance (flop : FlopIdent) : Field flop.F :=
   flop.instField
@@ -277,6 +272,9 @@ instance (flop : FlopIdent) : DialectPrint flop.D :=
 instance (flop : FlopIdent) : DialectParse flop.D 0 :=
   flop.instDialectParse
 
+abbrev FlopIdent.MkFlop (flop : FlopIdent) : Dialect :=
+  Flop flop.F flop.D flop.int flop.coeInt
+
 open Qq in
 elab "[field_ops" flopi:term " | " reg:mlir_region "]" : term => do
   let flop : Q(FlopIdent) ← elabTermEnsuringTypeQ flopi q(FlopIdent)
@@ -296,6 +294,7 @@ instDialectDenote := sorry
 instDialectPrint := sorry
 instDialectParse := sorry
 int := sorry
+coeInt := sorry
 
 def program :=
   [field_ops flop | {
