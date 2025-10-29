@@ -45,10 +45,9 @@ def toFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var Γ₂ (f ty₁) → V
 /-- Transport a variable from any mapped context `Γ.filterMap f` to `Γ`. -/
 def fromFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var (Γ₂.filterMap g) ty₁ → Var Γ₂ (f ty₁)
 | ⟨i, h⟩ => ⟨
-  let L := Γ₂.toList.mapIdx .mk |>.filter <| Option.isSome ∘ g ∘ Prod.snd
-  have : i < L.length := by
-    sorry
-  L[i].1, by
+  let countAndDrop acc L :=
+    (acc + (L.takeWhile <| Option.isNone ∘ g).length, L.dropWhile <| Option.isNone ∘ g)
+  i.repeat (fun (j, L) => countAndDrop (j + 1) <| L.drop 1) (countAndDrop 0 Γ₂.toList) |>.1, by
   sorry ⟩
 
 end Var
