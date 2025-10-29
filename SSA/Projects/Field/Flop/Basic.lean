@@ -1,4 +1,4 @@
-import LeanMLIR.Basic
+import SSA.Projects.Field.Context
 import Mathlib.Data.ZMod.Basic
 
 /-!
@@ -45,53 +45,10 @@ def Ty.lower : Ty F Ty' int' → Option Ty'
 | .raise ty' => some ty'
 | _ => none
 
-/-- Raises a context from the underlying dialect. -/
-def raiseCtxt (Γ : Ctxt Ty') : Ctxt (Ty F Ty' int') :=
-  Γ.map .raise
-
-/-- Lowers a context to the underlying dialect,
-filtering types that are not from the underlying dialect. -/
-def lowerCtxt (Γ : Ctxt (Ty F Ty' int')) : Ctxt Ty' :=
-  .ofList <| Γ.toList.filterMap Ty.lower
-
-section
-
-variable {Γ' : Ctxt Ty'} {Γ : Ctxt (Ty F Ty' int')} (ty' : Ty')
-
-/-- Raises a variable to a raised context from the underlying dialect.
-The transformation is trivial since raising a context does not change its structure. -/
-def raiseVar_to_raiseCtxt (var : Γ'.Var ty') : raiseCtxt Γ' |>.Var (.raise ty' : Ty F Ty' int') :=
-  var.toMap
-
-/-- Raises a variable from a lowered context in the underlying dialect.
-The variable index must be shifted to account for the filtering during context lowering. -/
-def raiseVar_of_lowerCtxt (var : lowerCtxt Γ |>.Var ty') : Γ.Var (.raise ty' : Ty F Ty' int') :=
-  { val :=
-      let L := Γ.toList.mapIdx Prod.mk |>.filter <| Option.isSome ∘ Ty.lower ∘ Prod.snd
-      have : var.val < L.length := by
-        sorry
-      L[var.val].1,
-    property :=
-      sorry }
-
-/-- Lowers a variable from a raised context to the underlying dialect.
-The transformation is trivial since raising a context does not change its structure. -/
-def lowerVar_of_raiseCtxt (var : raiseCtxt Γ' |>.Var (.raise ty' : Ty F Ty' int')) : Γ'.Var ty' :=
-  { val := var.val,
-    property := by have h := var.property; simp [raiseCtxt] at h; assumption }
-
-/-- Lowers a variable to a lowered context in the underlying dialect.
-The variable index must be shifted to account for the filtering during context lowering. -/
-def lowerVar_to_lowerCtxt (var : Γ.Var (.raise ty' : Ty F Ty' int')) : lowerCtxt Γ |>.Var ty' :=
-  { val := Γ.toList.take var.val |>.countP <| Option.isSome ∘ Ty.lower,
-    property :=
-      sorry }
-
-end
-
-/-- Raises a region signature from the underlying dialect. -/
-def raiseRegionSignature (regSig : RegionSignature Ty') : RegionSignature (Ty F Ty' int') :=
-  regSig.map .raise
+omit [Field F] [DecidableEq Ty'] [TyDenote Ty'] in
+@[simp]
+lemma ty_lower_raise : ∀ {ty'}, Ty.lower (.raise ty' : Ty F Ty' int') = some ty' := by
+  simp [Ty.lower]
 
 instance : DecidableEq (Ty F Ty' int')
 | .raise a, .raise b => decidable_of_iff (a = b) <| by simp
@@ -131,6 +88,11 @@ with `none` when the operation is not from the underlying dialect. -/
 def Op.lower : Op F Op' → Option Op'
 | .raise ty' => some ty'
 | _ => none
+
+omit [Field F] in
+@[simp]
+lemma op_lower_raise : ∀ {op'}, Op.lower (.raise op' : Op F Op') = some op' := by
+  simp [Op.lower]
 
 /-- A map from operations to the types of their outputs. -/
 @[simp, reducible]
@@ -177,7 +139,7 @@ def Op.signature (signature' : Op' → Signature Ty') : Op F Op' → Signature (
 | op => {
   sig := op.sig (Signature.sig <| signature' .),
   returnTypes := op.returnTypes (Signature.returnTypes <| signature' .),
-  regSig := op.lower.casesOn [] (raiseRegionSignature <| Signature.regSig <| signature' .),
+  regSig := op.lower.casesOn [] (Signature.regSig <| signature' . |>.map .raise),
   effectKind := op.effectKind (Signature.effectKind <| signature' .) }
 
 end Flop
@@ -201,18 +163,18 @@ variable {Γ : Ctxt (Ty F D.Ty int)} {eff : EffectKind} {tys' : List D.Ty}
 
 /-- Raises an expression from the underlying dialect. -/
 def raiseExpr
-    (expr : Expr D (lowerCtxt Γ) eff tys') :
+    (expr : Expr D (Γ.filterMap Ty.lower) eff tys') :
     Expr (Flop F D int raiseInt) Γ eff (tys'.map .raise) :=
   Expr.mk
     (.raise expr.op)
     (by simp_rw [expr.ty_eq]; rfl)
     expr.eff_le
-    (expr.args.map' _ raiseVar_of_lowerCtxt)
+    (expr.args.map' _ fun _ var' => var'.fromFilterMap <| by simp)
     sorry
 
 /-- Raises a computation from the underlying dialect. -/
 def raiseCom
-    (com : Com D (lowerCtxt Γ) eff tys') :
+    (com : Com D (Γ.filterMap Ty.lower) eff tys') :
     Com (Flop F D int raiseInt) Γ eff (tys'.map .raise) :=
   match com with
   | .rets vars => sorry
@@ -220,13 +182,13 @@ def raiseCom
 
 /-- Raises an expression bundled with its types and effect kind from the underlying dialect. -/
 def raiseSumExpr :
-    (Σ eff tys', Expr D (lowerCtxt Γ) eff tys') →
+    (Σ eff tys', Expr D (Γ.filterMap Ty.lower) eff tys') →
     (Σ eff tys', Expr (Flop F D int raiseInt) Γ eff tys')
 | ⟨eff, tys', expr⟩ => ⟨eff, tys'.map .raise, raiseExpr expr⟩
 
 /-- Raises a computation bundled with its types and effect kind from the underlying dialect. -/
 def raiseSumCom :
-    (Σ eff tys', Com D (lowerCtxt Γ) eff tys') →
+    (Σ eff tys', Com D (Γ.filterMap Ty.lower) eff tys') →
     (Σ eff tys', Com (Flop F D int raiseInt) Γ eff tys')
 | ⟨eff, tys', com⟩ => ⟨eff, tys'.map .raise, raiseCom com⟩
 
@@ -296,11 +258,11 @@ mkExpr Γ opStx := match opStx.name with
 | "field.zmul" => opStx.mkExprOf Γ .zmul
 | "field.pow" => opStx.mkExprOf Γ .pow
 | "field.ofint" => opStx.mkExprOf Γ .ofint
-| _ => do return raiseSumExpr <| ←E.mkExpr (lowerCtxt Γ) opStx
+| _ => do return raiseSumExpr <| ←E.mkExpr (Γ.filterMap Ty.lower) opStx
 
 /-- Part of the parser for the dialect from an MLIR AST. -/
 instance : TransformReturn (Flop F D int raiseInt) 0 where
-mkReturn Γ opStx := do return raiseSumCom <| ←R.mkReturn (lowerCtxt Γ) opStx
+mkReturn Γ opStx := do return raiseSumCom <| ←R.mkReturn (Γ.filterMap Ty.lower) opStx
 
 /-- An identifier for a `Flop` dialect.
 Enforces that the underlying dialect has instances for parsing and denotational semantics. -/
