@@ -17,7 +17,6 @@ between dialects with types that correspond.
 -/
 
 variable {Ty₁ Ty₂ : Type} {f : Ty₁ → Ty₂} {g : Ty₂ → Option Ty₁}
-variable {Γ₁ : Ctxt Ty₁} {Γ₂ : Ctxt Ty₂} {ty₁ : Ty₁} {ty₂ : Ty₂}
 
 namespace Ctxt
 
@@ -45,11 +44,26 @@ def toFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var Γ₂ (f ty₁) → V
 /-- Transport a variable from any mapped context `Γ.filterMap f` to `Γ`. -/
 def fromFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var (Γ₂.filterMap g) ty₁ → Var Γ₂ (f ty₁)
 | ⟨i, h⟩ => ⟨
-  let countAndDrop acc L :=
-    (acc + (L.takeWhile <| Option.isNone ∘ g).length, L.dropWhile <| Option.isNone ∘ g)
-  i.repeat (fun (j, L) => countAndDrop (j + 1) <| L.drop 1) (countAndDrop 0 Γ₂.toList) |>.1, by
+  let countAndDrop acc tys₂ :=
+    (acc + (tys₂.takeWhile <| Option.isNone ∘ g).length, tys₂.dropWhile <| Option.isNone ∘ g)
+  i.repeat (fun (j, tys₂) => countAndDrop (j + 1) <| tys₂.drop 1) (countAndDrop 0 Γ₂.toList) |>.1, by
   sorry ⟩
 
 end Var
+
+@[simp]
+theorem filterMap_some {Γ₂ : Ctxt Ty₂} :
+    Γ₂.filterMap some = Γ₂ := by
+  simp [filterMap]
+
+@[simp]
+theorem filterMap_append (g : Ty₂ → Option Ty₁) (Γ₂ Δ₂ : Ctxt Ty₂) :
+    (Γ₂ ++ Δ₂).filterMap g = Γ₂.filterMap g ++ Δ₂.filterMap g := by
+  simp [filterMap]
+
+@[simp]
+theorem filterMap_map {Γ₁ : Ctxt Ty₁} :
+    (Γ₁.map f).filterMap g = Γ₁.filterMap (g ∘ f) := by
+  simp [filterMap, map]
 
 end Ctxt

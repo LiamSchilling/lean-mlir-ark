@@ -47,8 +47,13 @@ def Ty.lower : Ty F Ty' int' → Option Ty'
 
 omit [Field F] [DecidableEq Ty'] [TyDenote Ty'] in
 @[simp]
-lemma ty_lower_raise : ∀ {ty'}, Ty.lower (.raise ty' : Ty F Ty' int') = some ty' := by
+lemma ty_lower_raise_eq : ∀ {ty'}, Ty.lower (.raise ty' : Ty F Ty' int') = some ty' := by
   simp [Ty.lower]
+
+omit [Field F] [DecidableEq Ty'] [TyDenote Ty'] in
+@[simp]
+lemma ty_lower_raise_id : (Ty.lower : Ty F Ty' int' → Option Ty') ∘ .raise = some := by
+  ext; simp
 
 instance : DecidableEq (Ty F Ty' int')
 | .raise a, .raise b => decidable_of_iff (a = b) <| by simp
@@ -93,6 +98,11 @@ omit [Field F] in
 @[simp]
 lemma op_lower_raise : ∀ {op'}, Op.lower (.raise op' : Op F Op') = some op' := by
   simp [Op.lower]
+
+omit [Field F] in
+@[simp]
+lemma op_lower_raise_id : (Op.lower : Op F Op' → Option Op') ∘ .raise = some := by
+  ext; simp
 
 /-- A map from operations to the types of their outputs. -/
 @[simp, reducible]
@@ -157,42 +167,95 @@ namespace Flop
 instance : DialectSignature (Flop F D int raiseInt) where
 signature := Op.signature <| DialectSignature.signature
 
-section
+section Maps
 
-variable {Γ : Ctxt (Ty F D.Ty int)} {eff : EffectKind} {tys' : List D.Ty}
+mutual
 
-/-- Raises an expression from the underlying dialect. -/
-def raiseExpr
+/-- Transform an expression to any
+mapped context `Γ.map f` and mapped type universe `tys.map f`. -/
+def raiseExprToMap
+    (expr : Expr D Γ' eff tys') :
+    Expr (Flop F D int raiseInt) (Γ'.map .raise) eff (tys'.map .raise) :=
+  Expr.mk
+    (.raise expr.op)
+    (by simp_rw [expr.ty_eq]; rfl)
+    expr.eff_le
+    (expr.args.map' Ty.raise fun _ => .toMap)
+    (expr.regArgs.map'
+      (fun (Γ', tys') => (Γ'.map Ty.raise, tys'.map Ty.raise))
+      (fun _ => raiseComToMap) )
+decreasing_by sorry
+
+/-- Transform a computation to any
+mapped context `Γ.map f` and mapped type universe `tys.map f`. -/
+def raiseComToMap
+    (com : Com D Γ' eff tys') :
+    Com (Flop F D int raiseInt) (Γ'.map .raise) eff (tys'.map .raise) :=
+  match com with
+  | .rets vars => .rets <| vars.map' Ty.raise fun _ => .toMap
+  | .var expr body => .var
+    (raiseExprToMap expr)
+    (Ctxt.map_append _ _ _ ▸ raiseComToMap
+      body )
+
+end
+
+/-- Transform an expression from any
+filter-mapped context `Γ.filterMap f` and filter-mapped type universe `tys.filterMap f`. -/
+def raiseExprFromFilterMap
     (expr : Expr D (Γ.filterMap Ty.lower) eff tys') :
     Expr (Flop F D int raiseInt) Γ eff (tys'.map .raise) :=
   Expr.mk
     (.raise expr.op)
     (by simp_rw [expr.ty_eq]; rfl)
     expr.eff_le
-    (expr.args.map' _ fun _ var' => var'.fromFilterMap <| by simp)
-    sorry
+    (expr.args.map' Ty.raise fun _ => .fromFilterMap ty_lower_raise_eq)
+    (expr.regArgs.map'
+      (fun (Γ', tys') => (Γ'.map Ty.raise, tys'.map Ty.raise))
+      (fun _ => raiseComToMap) )
 
-/-- Raises a computation from the underlying dialect. -/
-def raiseCom
+/-- Transform a computation from any
+filter-mapped context `Γ.filterMap f` and filter-mapped type universe `tys.filterMap f`. -/
+def raiseComFromFilterMap
     (com : Com D (Γ.filterMap Ty.lower) eff tys') :
     Com (Flop F D int raiseInt) Γ eff (tys'.map .raise) :=
   match com with
-  | .rets vars => sorry
-  | .var expr body => sorry
+  | .rets vars => .rets <| vars.map' Ty.raise fun _ => .fromFilterMap ty_lower_raise_eq
+  | .var expr body => .var
+    (raiseExprFromFilterMap expr)
+    (raiseComFromFilterMap <| Ctxt.filterMap_append _ _ _ ▸
+      Ctxt.filterMap_map ▸ ty_lower_raise_id ▸ Ctxt.filterMap_some ▸ body )
+decreasing_by sorry
 
-/-- Raises an expression bundled with its types and effect kind from the underlying dialect. -/
-def raiseSumExpr :
+/-- Transform an expression bundled with its types and effect kind to any
+mapped context `Γ.map f` and mapped type universe `tys.map f`. -/
+def raiseSumExprToMap :
+    (Σ eff tys', Expr D Γ' eff tys') →
+    (Σ eff tys', Expr (Flop F D int raiseInt) (Γ'.map .raise) eff tys')
+| ⟨eff, tys', expr⟩ => ⟨eff, tys'.map .raise, raiseExprToMap expr⟩
+
+/-- Transform a computation bundled with its types and effect kind to any
+mapped context `Γ.map f` and mapped type universe `tys.map f`. -/
+def raiseSumComToMap :
+    (Σ eff tys', Com D Γ' eff tys') →
+    (Σ eff tys', Com (Flop F D int raiseInt) (Γ'.map .raise) eff tys')
+| ⟨eff, tys', com⟩ => ⟨eff, tys'.map .raise, raiseComToMap com⟩
+
+/-- Transform an expression bundled with its types and effect kind from any
+filter-mapped context `Γ.filterMap f` and filter-mapped type universe `tys.filterMap f`. -/
+def raiseSumExprFromFilterMap :
     (Σ eff tys', Expr D (Γ.filterMap Ty.lower) eff tys') →
     (Σ eff tys', Expr (Flop F D int raiseInt) Γ eff tys')
-| ⟨eff, tys', expr⟩ => ⟨eff, tys'.map .raise, raiseExpr expr⟩
+| ⟨eff, tys', expr⟩ => ⟨eff, tys'.map .raise, raiseExprFromFilterMap expr⟩
 
-/-- Raises a computation bundled with its types and effect kind from the underlying dialect. -/
-def raiseSumCom :
+/-- Transform a computation bundled with its types and effect kind from any
+filter-mapped context `Γ.filterMap f` and filter-mapped type universe `tys.filterMap f`. -/
+def raiseSumComFromFilterMap :
     (Σ eff tys', Com D (Γ.filterMap Ty.lower) eff tys') →
     (Σ eff tys', Com (Flop F D int raiseInt) Γ eff tys')
-| ⟨eff, tys', com⟩ => ⟨eff, tys'.map .raise, raiseCom com⟩
+| ⟨eff, tys', com⟩ => ⟨eff, tys'.map .raise, raiseComFromFilterMap com⟩
 
-end
+end Maps
 
 /-- The semantics for the dialect. -/
 instance : DialectDenote (Flop F D int raiseInt) where
@@ -258,11 +321,11 @@ mkExpr Γ opStx := match opStx.name with
 | "field.zmul" => opStx.mkExprOf Γ .zmul
 | "field.pow" => opStx.mkExprOf Γ .pow
 | "field.ofint" => opStx.mkExprOf Γ .ofint
-| _ => do return raiseSumExpr <| ←E.mkExpr (Γ.filterMap Ty.lower) opStx
+| _ => do return raiseSumExprFromFilterMap <| ←E.mkExpr (Γ.filterMap Ty.lower) opStx
 
 /-- Part of the parser for the dialect from an MLIR AST. -/
 instance : TransformReturn (Flop F D int raiseInt) 0 where
-mkReturn Γ opStx := do return raiseSumCom <| ←R.mkReturn (Γ.filterMap Ty.lower) opStx
+mkReturn Γ opStx := do return raiseSumComFromFilterMap <| ←R.mkReturn (Γ.filterMap Ty.lower) opStx
 
 /-- An identifier for a `Flop` dialect.
 Enforces that the underlying dialect has instances for parsing and denotational semantics. -/
