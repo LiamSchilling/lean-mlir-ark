@@ -28,11 +28,11 @@ open LeanMLIR MLIR.AST
 
 variable {F : Type} [Field F]
 
-variable {Ty' Op' : Type}
-variable {int' : Ty'} [DecidableEq Ty'] [TyDenote Ty']
+variable {Ty' Op' : Type} [DecidableEq Ty'] [TyDenote Ty']
+variable {int' : Ty'}
 
-variable {D : Dialect} [Monad D.m]
-variable {int : D.Ty} [DecidableEq D.Ty] [TyDenote D.Ty] {raiseInt : ⟦int⟧ → ℤ}
+variable {D : Dialect} [Monad D.m] [DecidableEq D.Ty] [TyDenote D.Ty]
+variable {int : D.Ty} {raiseInt : ⟦int⟧ → ℤ}
 variable [DialectSignature D] [DialectDenote D] [DialectPrint D]
 variable [T : TransformTy D 0] [E : TransformExpr D 0] [R : TransformReturn D 0]
 
@@ -59,7 +59,7 @@ lemma ty_lower_raise_eq : ∀ {ty'}, Ty.lower (.raise ty' : Ty F Ty' int') = som
 
 omit [Field F] [DecidableEq Ty'] [TyDenote Ty'] in
 @[simp]
-lemma ty_lower_raise_id : (Ty.lower : Ty F Ty' int' → Option Ty') ∘ .raise = some := by
+lemma ty_lower_raise_some : (Ty.lower : Ty F Ty' int' → Option Ty') ∘ .raise = some := by
   ext; simp
 
 instance : DecidableEq (Ty F Ty' int')
@@ -103,12 +103,12 @@ def Op.lower : Op F Op' → Option Op'
 
 omit [Field F] in
 @[simp]
-lemma op_lower_raise : ∀ {op'}, Op.lower (.raise op' : Op F Op') = some op' := by
+lemma op_lower_raise_eq : ∀ {op'}, Op.lower (.raise op' : Op F Op') = some op' := by
   simp [Op.lower]
 
 omit [Field F] in
 @[simp]
-lemma op_lower_raise_id : (Op.lower : Op F Op' → Option Op') ∘ .raise = some := by
+lemma op_lower_raise_some : (Op.lower : Op F Op' → Option Op') ∘ .raise = some := by
   ext; simp
 
 /-- A map from operations to the types of their outputs. -/
@@ -171,6 +171,7 @@ m := D.m
 namespace Flop
 
 /-- The type signatures for the dialect. -/
+@[simp, reducible]
 instance : DialectSignature (Flop F D int raiseInt) where
 signature := Op.signature <| DialectSignature.signature
 
@@ -199,8 +200,8 @@ def raiseComToMap
     (com : Com D Γ' eff tys') :
     Com (Flop F D int raiseInt) (Γ'.map .raise) eff (tys'.map .raise) :=
   match com with
-  | .rets vars => .rets <| vars.map' Ty.raise fun _ => .toMap
-  | .var expr body => .var
+  | Com.rets vars => Com.rets <| vars.map' Ty.raise fun _ => .toMap
+  | Com.var expr body => Com.var
     (raiseExprToMap expr)
     (Ctxt.map_append _ _ _ ▸ raiseComToMap
       body )
@@ -227,11 +228,11 @@ def raiseComFromFilterMap
     (com : Com D (Γ.filterMap Ty.lower) eff tys') :
     Com (Flop F D int raiseInt) Γ eff (tys'.map .raise) :=
   match com with
-  | .rets vars => .rets <| vars.map' Ty.raise fun _ => .fromFilterMap ty_lower_raise_eq
-  | .var expr body => .var
+  | Com.rets vars => Com.rets <| vars.map' Ty.raise fun _ => .fromFilterMap ty_lower_raise_eq
+  | Com.var expr body => Com.var
     (raiseExprFromFilterMap expr)
     (raiseComFromFilterMap <| Ctxt.filterMap_append _ _ _ ▸
-      Ctxt.filterMap_map ▸ ty_lower_raise_id ▸ Ctxt.filterMap_some ▸ body )
+      Ctxt.filterMap_map ▸ ty_lower_raise_some ▸ Ctxt.filterMap_some ▸ body )
 decreasing_by sorry
 
 /-- Transform an expression bundled with its types and effect kind to any
