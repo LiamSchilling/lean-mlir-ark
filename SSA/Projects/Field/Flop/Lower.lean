@@ -29,4 +29,17 @@ raiseInt := by
   | .poison => 0 --this may become problematic
   | .value x => x.toInt
 
+/- Getting an ERROR I don't understand
+
+The source where it is thrown
+can apparently can be found in `LeanMLIR\MLIRSyntax\EDSL.lean`.
+
+instance : Fact (Prime 5) := by decide
+def program :=
+  [field_ops flop_zmod_on_llvm 5 9 | {
+    %c2 = "llvm.mlir.constant"() {value = 8} : () -> i64
+    "llvm.return"(%c2) : (i64) -> ()
+  }]
+-/
+
 end Flop

@@ -8,6 +8,11 @@ Defines a wrapper dialect `Flop` for algebra over a field.
 `Flop` requires that the underlying dialect contains an integer type.
 It is up to the underlying dialect to implement integer operations.
 
+Wrapper dialects are not an unusual way to design dialects
+that are amenable to composition.
+Another important wrapper dialect is `SSA\Scf`,
+which attaches structured control flow mechanisms to an underlying dialect.
+
 This dialect will be the basis for a number of extension dialects
 for objects that contain field elements:
 - Vectors: `Field\Vector\Basic.lean`
@@ -23,9 +28,11 @@ open LeanMLIR MLIR.AST
 
 variable {F : Type} [Field F]
 
-variable {Ty' Op' : Type} {int' : Ty'} [DecidableEq Ty'] [TyDenote Ty']
+variable {Ty' Op' : Type}
+variable {int' : Ty'} [DecidableEq Ty'] [TyDenote Ty']
 
-variable {D : Dialect} {int : D.Ty} [DecidableEq D.Ty] [TyDenote D.Ty] {raiseInt : ⟦int⟧ → ℤ}
+variable {D : Dialect} [Monad D.m]
+variable {int : D.Ty} [DecidableEq D.Ty] [TyDenote D.Ty] {raiseInt : ⟦int⟧ → ℤ}
 variable [DialectSignature D] [DialectDenote D] [DialectPrint D]
 variable [T : TransformTy D 0] [E : TransformExpr D 0] [R : TransformReturn D 0]
 
@@ -260,7 +267,9 @@ end Maps
 /-- The semantics for the dialect. -/
 instance : DialectDenote (Flop F D int raiseInt) where
 denote
-| .raise op', arg, _ => sorry
+| .raise op', arg, _ => do
+  let res ← DialectDenote.denote op' sorry sorry
+  return res.map' Ty.raise fun _ => id
 | .zero, _, _ => [0]ₕ
 | .one, _, _ => [1]ₕ
 | .add, arg, _ => [(fun args => args.1 + args.2) arg.toPair]ₕ
