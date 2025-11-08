@@ -1,4 +1,4 @@
-import SSA.Projects.Field.Context
+import SSA.Projects.Field.Util
 import Mathlib.Data.ZMod.Basic
 
 /-!
@@ -43,7 +43,7 @@ namespace Flop
 - `raise int'`: the integer type in the underlying dialect
 - `f`: field members -/
 inductive Ty (F Ty' : Type) (int' : Ty') where
-| raise (ty' : Ty')
+| raise : Ty' → Ty F Ty' int'
 | f
 
 /-- Lowers a type to the underlying dialect,
@@ -70,6 +70,7 @@ instance : DecidableEq (Ty F Ty' int')
 
 /-- A map from types in the dialect to the Lean types of their semantic interpretations.
 The semantic interpretations of types from the underlying dialect are preserved. -/
+@[simp, reducible]
 instance : TyDenote (Ty F Ty' int') where
 toType
 | .raise ty' => ⟦ty'⟧
@@ -89,7 +90,7 @@ toType
 - `pow`: repeated multiplication (of the inverse for negative integers)
 - `ofint`: repeated addition of `1` (of `-1` for negative integers) -/
 inductive Op (F : Type) (Op' : Type) where
-| raise (op' : Op')
+| raise : Op' → Op F Op'
 | zero | one
 | add | sub | neg
 | mul | div | inv
@@ -114,7 +115,7 @@ lemma op_lower_raise_some : (Op.lower : Op F Op' → Option Op') ∘ .raise = so
 /-- A map from operations to the types of their outputs. -/
 @[simp, reducible]
 def Op.sig (sig' : Op' → List Ty') : Op F Op' → List (Ty F Ty' int')
-| .raise Op' => sig' Op' |>.map .raise
+| .raise op' => sig' op' |>.map .raise
 | .zero => []
 | .one => []
 | .add => [.f, .f]
@@ -130,7 +131,7 @@ def Op.sig (sig' : Op' → List Ty') : Op F Op' → List (Ty F Ty' int')
 /-- A map from operations to the types of their outputs. -/
 @[simp, reducible]
 def Op.returnTypes (returnTypes' : Op' → List Ty') : Op F Op' → List (Ty F Ty' int')
-| .raise Op' => returnTypes' Op' |>.map .raise
+| .raise op' => returnTypes' op' |>.map .raise
 | .zero => [.f]
 | .one => [.f]
 | .add => [.f]
@@ -143,8 +144,15 @@ def Op.returnTypes (returnTypes' : Op' → List Ty') : Op F Op' → List (Ty F T
 | .pow => [.f]
 | .ofint => [.f]
 
+/-- A map from operations to the signatures of their attached regions.
+Native operations have no regions. -/
+@[simp, reducible]
+def Op.regSig (regSig' : Op' → RegionSignature Ty') : Op F Op' → RegionSignature (Ty F Ty' int')
+| .raise op' => regSig' op' |>.map .raise
+| _ => []
+
 /-- A map from operations to the kinds of their effects.
-Native operations are pure, but this cannot be assumed of operations in the underlying dialect. -/
+Native operations are pure. -/
 @[simp, reducible]
 def Op.effectKind (effectKind' : Op' → EffectKind) : Op F Op' → EffectKind
 | .raise op' => effectKind' op'
@@ -156,7 +164,7 @@ def Op.signature (signature' : Op' → Signature Ty') : Op F Op' → Signature (
 | op => {
   sig := op.sig (Signature.sig <| signature' .),
   returnTypes := op.returnTypes (Signature.returnTypes <| signature' .),
-  regSig := op.lower.casesOn [] (Signature.regSig <| signature' . |>.map .raise),
+  regSig := op.regSig (Signature.regSig <| signature' .),
   effectKind := op.effectKind (Signature.effectKind <| signature' .) }
 
 end Flop
@@ -164,8 +172,8 @@ end Flop
 /-- The dialect, which wraps the underlying dialect `D`. -/
 @[reducible]
 def Flop (F : Type) (D : Dialect) [TyDenote D.Ty] (int : D.Ty) (_ : ⟦int⟧ → ℤ) : Dialect where
-Op := Flop.Op F D.Op
 Ty := Flop.Ty F D.Ty int
+Op := Flop.Op F D.Op
 m := D.m
 
 namespace Flop
@@ -173,7 +181,7 @@ namespace Flop
 /-- The type signatures for the dialect. -/
 @[simp, reducible]
 instance : DialectSignature (Flop F D int raiseInt) where
-signature := Op.signature <| DialectSignature.signature
+signature := Op.signature DialectSignature.signature
 
 section Maps
 

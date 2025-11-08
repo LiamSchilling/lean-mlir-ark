@@ -1,5 +1,6 @@
 import SSA.Projects.Field.Flop.Basic
 import LeanMLIR.Dialects.LLVM.Syntax
+import Mathlib.Algebra.Field.ZMod
 
 /-!
 # Lowering Finite-Field Dialects to an Integer Dialect
@@ -12,15 +13,14 @@ to scaffold their lowering to a tensor dialect.
 
 open LeanMLIR InstCombine
 
-variable {p w : ℕ} [Fact (Prime p)]
+variable {p w : ℕ} [Fact p.Prime]
 
 namespace Flop
 
 /-- Identifies a `Flop` dialect that attaches the field `ℤ/pℤ` to `LLVM`.
 `LLVM` bitvectors of width `w` are taken to be the integer type in the new dialect. -/
-def flopZModOnLLVM (p w : ℕ) [Fact (Prime p)] : FlopIdent where
+def flopZModOnLLVM (p w : ℕ) [Fact p.Prime] : FlopIdent where
 F := ZMod p
-instField := sorry
 D := LLVM
 int := .bitvec w
 raiseInt := by
@@ -33,9 +33,9 @@ raiseInt := by
 
 The source where it is thrown can apparently can be found in `LeanMLIR\MLIRSyntax\EDSL.lean`.
 
-instance : Fact (Prime 5) := by decide
+instance : Fact (5).Prime := by decide
 def program :=
-  [field_ops flop_zmod_on_llvm 5 9 | {
+  [field_ops flopZModOnLLVM 5 9 | {
     %c2 = "llvm.mlir.constant"(){value = 8} : () -> i64
     "llvm.return"(%c2) : (i64) -> ()
   }]
@@ -45,7 +45,7 @@ def program :=
 Instead, data from `Flop` must itself be lowered to a representative type `f` in `LLVM`.
 The way to design this is unclear, since it will be impossible to disambiguate
 variables of type `f` that were lowered from a `Flop` field element
-from variables of type `f` that are true `LLVM` values of type `f`.  -/
+from variables of type `f` that are true `LLVM` values of type `f`. -/
 
 def lower_flopZModOnLLVM :
     Com (flopZModOnLLVM p w).MkFlop Γ eff ty → Com LLVM (Γ.filterMap Ty.lower) eff ty'
