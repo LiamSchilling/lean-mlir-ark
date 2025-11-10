@@ -1,4 +1,4 @@
-import SSA.Projects.Field.FuncV.Basic
+import SSA.Projects.Field.FuncV.Defs
 import SSA.Projects.Field.Util
 
 variable {D : Dialect} [TyDenote D.Ty] [DialectSignature D] [DialectDenote D] [Monad D.m]
@@ -22,7 +22,7 @@ denote
 | .raise op', arg, regArg => do
   let res ← DialectDenote.denote op' (arg.fromMap' Ty.raise fun _ => id) <|
     regArg.fromMap' (RegionSignature.mapElem Ty.raise) fun _ denote val => do
-      let res ← denote <| val.toMap (by simp) fun _ => id
+      let res ← denote <| val.toMap fun _ => id
       return res.fromMap' Ty.raise fun _ => id
   return res.map' Ty.raise fun _ => id
 | .call funcSig, f ::ₕ fArgs, _ => do

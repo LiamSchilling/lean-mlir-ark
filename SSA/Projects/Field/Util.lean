@@ -40,12 +40,12 @@ def filterMap (g : Ty₂ → Option Ty₁) : Ctxt Ty₂ → Ctxt Ty₁ :=
 namespace Var
 
 /-- Transport a variable from any mapped context `Γ.map f` to `Γ`. -/
-def fromMap (inj : ∀ {ty₁ ty₂}, f ty₁ = f ty₂ → ty₁ = ty₂) : Var (Γ₁.map f) (f ty₁) → Var Γ₁ ty₁
+def fromMap (inj : ∀ {ty₂}, f ty₁ = f ty₂ → ty₁ = ty₂) : Var (Γ₁.map f) (f ty₁) → Var Γ₁ ty₁
 | ⟨i, h⟩ => ⟨i, by
   simp only [getElem?_map, Option.map_eq_some_iff] at h
   have ⟨_, h₁, h₂⟩ := h
   simp only [h₁, Option.some.injEq]
-  exact inj h₂ ⟩
+  exact inj h₂.symm |>.symm ⟩
 
 /-- Transport a variable from `Γ` to any mapped context `Γ.filterMap f`. -/
 def toFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var Γ₂ (f ty₁) → Var (Γ₂.filterMap g) ty₁
@@ -56,9 +56,11 @@ def toFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var Γ₂ (f ty₁) → V
 /-- Transport a variable from any mapped context `Γ.filterMap f` to `Γ`. -/
 def fromFilterMap (inv : ∀ {ty}, g (f ty) = some ty) : Var (Γ₂.filterMap g) ty₁ → Var Γ₂ (f ty₁)
 | ⟨i, h⟩ => ⟨
-  let countAndDrop acc tys₂ :=
+  let countAndDrop acc (tys₂ : List Ty₂) :=
     (acc + (tys₂.takeWhile <| Option.isNone ∘ g).length, tys₂.dropWhile <| Option.isNone ∘ g)
-  i.repeat (fun (j, tys₂) => countAndDrop (j + 1) <| tys₂.drop 1) (countAndDrop 0 Γ₂.toList) |>.1, by
+  let countAndDropAtLeastOne acc (tys₂ : List Ty₂) :=
+    countAndDrop (acc + 1) <| tys₂.drop 1
+  i.repeat (uncurry countAndDropAtLeastOne) (countAndDrop 0 Γ₂.toList) |>.1, by
   sorry ⟩
 
 end Var
@@ -68,15 +70,19 @@ namespace Valuation
 variable [TyDenote Ty₁] [TyDenote Ty₂]
 
 /-- Transport a valuation from `Γ` to any mapped context `Γ.map f`. -/
-def toMap (inj : ∀ {ty₁ ty₂}, f ty₁ = f ty₂ → ty₁ = ty₂) (t : ∀ ty₁, ⟦ty₁⟧ → ⟦f ty₁⟧) :
+def toMap (denoteT : ∀ ty₁, ⟦ty₁⟧ → ⟦f ty₁⟧) :
     Valuation Γ₁ → Valuation (Γ₁.map f)
 | val, ty₂, ⟨i, h⟩ =>
-  let var := Var.mk i h
-  have : i < Γ₁.length := by rw [←length_map]; exact var.lt_length
+  have : i < Γ₁.length := by rw [←length_map]; exact Var.mk i h |>.lt_length
   have heq : ty₂ = f Γ₁[i] := by
     simp only [getElem?_map, Option.map_eq_some_iff] at h
     match h with | ⟨_, h₁, h₂⟩ => rw [getElem?_eq_some_iff.mp h₁ |>.2, h₂]
-  heq ▸ t Γ₁[i] <| val <| heq ▸ var |>.fromMap inj
+  heq ▸ denoteT Γ₁[i] <| val.eval ⟨i, by simp⟩
+
+/-- Transport a valuation from any mapped context `Γ.map f` to `Γ`. -/
+def fromMap (t : ∀ ty₁, ⟦f ty₁⟧ → ⟦ty₁⟧) :
+    Valuation (Γ₁.map f) → Valuation Γ₁
+| val, ty₂, var => t ty₂ <| val.eval var.toMap
 
 end Valuation
 
@@ -99,14 +105,27 @@ end Ctxt
 
 namespace RegionSignature
 
-variable {Ty₁ Ty₂ : Type}
+variable {Ty₁ Ty₂ : Type} (D : Dialect) [DialectSignature D]
 
 /-- Performs the mapping of a single entry of a regional signature,
 that is, a signature corresponding to one region. -/
 def mapElem (f : Ty₁ → Ty₂) : Ctxt Ty₁ × List Ty₁ → Ctxt Ty₂ × List Ty₂
 | (ctxt, tys) => (ctxt.map f, tys.map f)
 
+/-- Denotes a single entry of a regional signature to the type of such a region. -/
+def denoteSigElem : Ctxt D.Ty × List D.Ty → Type
+| (ctxt, tys) => Com D ctxt .impure tys
+
 end RegionSignature
+
+namespace Expr
+
+variable {D : Dialect} [DialectSignature D] {Γ : Ctxt D.Ty} {eff : EffectKind} {tys : List D.Ty}
+
+lemma outContext_eq : ∀ expr : Expr D Γ eff tys, expr.outContext = tys ++ Γ := by
+  simp
+
+end Expr
 
 namespace EffectKind
 

@@ -33,6 +33,10 @@ inductive Ty (Ty' : Type) (m : Type → Type) where
 | raise : Ty' → Ty Ty' m
 | pi : FunctionSignature (Ty Ty' m) Ty' → Ty Ty' m
 
+def Ty.lower : Ty Ty' m → Option Ty'
+| .raise ty' => some ty'
+| .pi _ => none
+
 instance : DecidableEq (Ty Ty' m)
 | .raise a, .raise b => decidable_of_iff (a = b) <| by simp
 | .raise _, .pi _ => isFalse <| by intro; contradiction
@@ -73,6 +77,11 @@ inductive Op (Ty' Op' : Type) (m : Type → Type) where
 | raise : Op' → Op Ty' Op' m
 | call : FunctionSignature (Ty Ty' m) Ty' → Op Ty' Op' m
 | func : FunctionSignature (Ty Ty' m) Ty' → Op Ty' Op' m
+
+def Op.lower : Op Ty' Op' m → Option Op'
+| .raise ty' => some ty'
+| .call _ => none
+| .func _ => none
 
 /-- A map from operations to the types of their outputs. -/
 @[reducible]

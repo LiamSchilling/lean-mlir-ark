@@ -28,12 +28,18 @@ def map (f : Ty' → Ty) (funcSig : FunctionSignature Ty Ty') : FunctionSignatur
   effectKind := funcSig.effectKind
   context := funcSig.context
 
+/-- The input context the region that contains the body of the function.
+The context comes from the input to the function and the captured external context. -/
+@[reducible]
+def toRegCtxt (funcSig : FunctionSignature Ty Ty) : Ctxt Ty :=
+  funcSig.context ++ .ofList funcSig.sig
+
 /-- The type signature of the region that contains the body of the function.
 The context comes from the input to the function and the captured external context,
 and the return types come from the output of the function. -/
 @[reducible]
 def toRegSig (funcSig : FunctionSignature Ty Ty) : RegionSignature Ty :=
-  [(funcSig.context ++ .ofList funcSig.sig, funcSig.returnTypes)]
+  [(funcSig.toRegCtxt, funcSig.returnTypes)]
 
 /-- A function type denotes to a Lean function from its inputs types to its output types,
 which may be effectful with effects in the monad `m`. -/
