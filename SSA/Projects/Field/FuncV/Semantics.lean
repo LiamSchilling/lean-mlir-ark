@@ -20,16 +20,16 @@ yielding a function mapping from the region's argument parameters to its outputs
 instance : DialectDenote (FuncV D) where
 denote
 | .raise op', arg, regArg => do
-  let res ← DialectDenote.denote op' (arg.fromMap' Ty.raise fun _ => id) <|
+  let res ← DialectDenote.denote op' (arg.castFromMap Ty.raise rfl) <|
     regArg.fromMap' (RegionSignature.mapElem Ty.raise) fun _ denote val => do
       let res ← denote <| val.toMap fun _ => id
-      return res.fromMap' Ty.raise fun _ => id
-  return res.map' Ty.raise fun _ => id
+      return res.castFromMap Ty.raise rfl
+  return res.castMap Ty.raise rfl
 | .call funcSig, f ::ₕ fArgs, _ => do
-  let res ← f <| fArgs.fromMap' Ty.raise fun _ => id
-  return res.map' Ty.raise fun _ => id
+  let res ← f <| fArgs.castFromMap Ty.raise rfl
+  return res.castMap Ty.raise rfl
 | .func funcSig, ctxtArgs, [body]ₕ => [fun fArgs => do
-  let res ← body <| .ofHVector <| HVector.append ctxtArgs (fArgs.map' Ty.raise fun _ => id)
-  return res.fromMap' Ty.raise fun _ => id ]ₕ
+  let res ← body <| .ofHVector <| .append ctxtArgs (fArgs.castMap Ty.raise rfl)
+  return res.castFromMap Ty.raise rfl ]ₕ
 
 end FuncV

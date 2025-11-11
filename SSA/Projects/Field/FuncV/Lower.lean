@@ -20,8 +20,9 @@ structure DialectLowerToFunc
     Expr D Γ eff tys →
     Expr (FuncV D') (Γ.map <| .raise ∘ tyLower) eff (tys.map <| .raise ∘ tyLower)
   denote_mapExpr : ∀ (expr : Expr D Γ eff tys) val,
-    let g := (fun val => val) <$> (expr.outContext_eq ▸ expr.denote val)
-    let h := (Ctxt.map_append _ _ _ ▸ (mapExpr expr).outContext_eq ▸ (mapExpr expr).denote <| val.toMap lowerDenote)
-    sorry
+    effectm_eq ▸
+      @Ctxt.Valuation.toMap _ _ (Ty.raise ∘ tyLower) _ _ _ lowerDenote <$> expr.denote val =
+    Ctxt.map_append _ _ _ ▸ (mapExpr expr).outContext_eq ▸
+      (mapExpr expr).denote (val.toMap lowerDenote)
 
 end FuncV

@@ -16,18 +16,6 @@ between dialects with types that correspond.
 - `Ctxt.Var.fromFilterMap`: transport a variable from a filter-mapped context
 -/
 
-namespace HVector
-
-variable {α β : Type*} {A : α → Type*} {B : β → Type*}
-
-/-- An alternative to `map'` which eliminates a mapped type instead of introducing one. -/
-def fromMap' (f' : β → α) (f : ∀ (b : β), A (f' b) → B b) :
-    ∀ {l : List β}, HVector A (l.map f') → HVector B l
-  | [], .nil => .nil
-  | t :: _, .cons a as  => .cons (f t a) (fromMap' f' f as)
-
-end HVector
-
 namespace Ctxt
 
 variable {Ty₁ Ty₂ : Type} {f : Ty₁ → Ty₂} {g : Ty₂ → Option Ty₁}
