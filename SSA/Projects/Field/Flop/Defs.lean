@@ -1,4 +1,3 @@
-import SSA.Projects.Field.Util
 import Mathlib.Data.ZMod.Basic
 
 /-!
