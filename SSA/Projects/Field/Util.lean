@@ -10,7 +10,7 @@ def mapElem (f : Ty₁ → Ty₂) : Ctxt Ty₁ × List Ty₁ → Ctxt Ty₂ × L
 | (ctxt, tys) => (ctxt.map f, tys.map f)
 
 /-- Denotes a single entry of a regional signature to the type of such a region. -/
-def denoteSigElem : Ctxt D.Ty × List D.Ty → Type
+def denoteElem : Ctxt D.Ty × List D.Ty → Type
 | (ctxt, tys) => Com D ctxt .impure tys
 
 end RegionSignature

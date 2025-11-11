@@ -7,11 +7,11 @@ variable {funcSig : FuncV.FunctionSignature (FuncV.Ty D.Ty D.m) D.Ty}
 namespace FuncV
 
 /-- An expression in the dialect realizing a raised operation. -/
-def Expr.raise
+def raiseExpr
     (op' : D.Op)
     (args : HVector Γ.Var (DialectSignature.sig op' |>.map .raise))
     (regArgs : HVector
-      (RegionSignature.denoteSigElem (FuncV D))
+      (RegionSignature.denoteElem (FuncV D))
       (DialectSignature.regSig op' |>.map Ty.raise)) :
     Expr (FuncV D) Γ
       (DialectSignature.effectKind op')
@@ -19,7 +19,7 @@ def Expr.raise
   Expr.mk (.raise op') rfl (le_of_eq rfl) args regArgs
 
 /-- An expression in the dialect realizing a `call` operation. -/
-def Expr.call
+def callExpr
     (f : Γ.Var <| .pi funcSig)
     (fArgs : HVector Γ.Var (funcSig.sig.map .raise)) :
     Expr (FuncV D) Γ
@@ -28,7 +28,7 @@ def Expr.call
   Expr.mk (.call funcSig) rfl (le_of_eq rfl) (f ::ₕ fArgs) []ₕ
 
 /-- An expression in the dialect realizing a `func` operation. -/
-def Expr.func
+def funcExpr
     (ctxtArgs : HVector Γ.Var funcSig.context.toList)
     (body : Com (FuncV D)
       (funcSig.map .raise |>.toRegCtxt)
