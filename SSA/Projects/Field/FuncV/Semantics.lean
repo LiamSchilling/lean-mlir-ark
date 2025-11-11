@@ -1,5 +1,4 @@
 import SSA.Projects.Field.FuncV.Defs
-import SSA.Projects.Field.Util
 
 variable {D : Dialect} [TyDenote D.Ty] [DialectSignature D] [DialectDenote D] [Monad D.m]
 

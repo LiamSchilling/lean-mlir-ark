@@ -1,5 +1,4 @@
 import SSA.Projects.Field.FuncV.Defs
-import SSA.Projects.Field.Util
 
 variable {D : Dialect} [DialectSignature D] {Γ : Ctxt (FuncV.Ty D.Ty D.m)} {eff : EffectKind}
 variable {funcSig : FuncV.FunctionSignature (FuncV.Ty D.Ty D.m) D.Ty}
@@ -10,9 +9,7 @@ namespace FuncV
 def raiseExpr
     (op' : D.Op)
     (args : HVector Γ.Var (DialectSignature.sig op' |>.map .raise))
-    (regArgs : HVector
-      (RegionSignature.denoteElem (FuncV D))
-      (DialectSignature.regSig op' |>.map Ty.raise)) :
+    (regArgs : HVector (Region (FuncV D)) (DialectSignature.regSig op' |>.map Ty.raise)) :
     Expr (FuncV D) Γ
       (DialectSignature.effectKind op')
       (DialectSignature.returnTypes op' |>.map .raise) :=
@@ -30,10 +27,7 @@ def callExpr
 /-- An expression in the dialect realizing a `func` operation. -/
 def funcExpr
     (ctxtArgs : HVector Γ.Var funcSig.context.toList)
-    (body : Com (FuncV D)
-      (funcSig.map .raise |>.toRegCtxt)
-      .impure
-      (funcSig.returnTypes.map .raise)) :
+    (body : Region (FuncV D) (funcSig.map .raise).toRegSigElem) :
     Expr (FuncV D) Γ
       .pure
       [.pi funcSig] :=

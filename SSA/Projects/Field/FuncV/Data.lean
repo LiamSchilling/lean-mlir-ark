@@ -38,8 +38,12 @@ def toRegCtxt (funcSig : FunctionSignature Ty Ty) : Ctxt Ty :=
 The context comes from the input to the function and the captured external context,
 and the return types come from the output of the function. -/
 @[reducible]
+def toRegSigElem (funcSig : FunctionSignature Ty Ty) : Ctxt Ty × List Ty :=
+  (funcSig.toRegCtxt, funcSig.returnTypes)
+
+@[reducible]
 def toRegSig (funcSig : FunctionSignature Ty Ty) : RegionSignature Ty :=
-  [(funcSig.toRegCtxt, funcSig.returnTypes)]
+  [funcSig.toRegSigElem]
 
 /-- A function type denotes to a Lean function from its inputs types to its output types,
 which may be effectful with effects in the monad `m`. -/
