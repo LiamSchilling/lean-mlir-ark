@@ -1,4 +1,5 @@
 import Mathlib.Data.ZMod.Basic
+import LeanMLIR.Basic
 
 /-!
 # Field Dialect
