@@ -21,7 +21,7 @@ structure DialectLowerToFunc
     Expr (FuncV D') (Γ.map <| .raise ∘ tyLower) eff (tys.map <| .raise ∘ tyLower)
   denote_mapExpr : ∀ (expr : Expr D Γ eff tys) val,
     effectm_eq ▸
-      @Ctxt.Valuation.toMap _ _ (Ty.raise ∘ tyLower) _ _ _ lowerDenote <$> expr.denote val =
+      @Ctxt.Valuation.toMap _ _ _ _ _ (Ty.raise ∘ tyLower) lowerDenote <$> expr.denote val =
     Ctxt.map_append _ _ _ ▸ (mapExpr expr).outContext_eq ▸
       (mapExpr expr).denote (val.toMap lowerDenote)
 

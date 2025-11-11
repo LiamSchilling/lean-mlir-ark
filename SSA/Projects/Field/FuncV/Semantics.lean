@@ -22,7 +22,7 @@ denote
 | .raise op', arg, regArg => do
   let res ← DialectDenote.denote op' (arg.castFromMap Ty.raise rfl) <|
     regArg.fromMap' (RegionSignature.mapElem Ty.raise) fun _ denote val => do
-      let res ← denote <| val.toMap fun _ => id
+      let res ← denote <| val.castToMap rfl
       return res.castFromMap Ty.raise rfl
   return res.castMap Ty.raise rfl
 | .call funcSig, f ::ₕ fArgs, _ => do
