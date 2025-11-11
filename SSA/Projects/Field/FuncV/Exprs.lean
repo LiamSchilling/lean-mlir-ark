@@ -11,7 +11,7 @@ def Expr.raise
     (op' : D.Op)
     (args : HVector Γ.Var (DialectSignature.sig op' |>.map .raise))
     (regArgs : HVector
-      (RegionSignature.denoteSigElem <| FuncV D)
+      (RegionSignature.denoteSigElem (FuncV D))
       (DialectSignature.regSig op' |>.map Ty.raise)) :
     Expr (FuncV D) Γ
       (DialectSignature.effectKind op')
@@ -30,13 +30,13 @@ def Expr.call
 /-- An expression in the dialect realizing a `func` operation. -/
 def Expr.func
     (ctxtArgs : HVector Γ.Var funcSig.context.toList)
-    (regArg : Com (FuncV D)
+    (body : Com (FuncV D)
       (funcSig.map .raise |>.toRegCtxt)
       .impure
       (funcSig.returnTypes.map .raise)) :
     Expr (FuncV D) Γ
       .pure
       [.pi funcSig] :=
-  Expr.mk (.func funcSig) rfl (le_of_eq rfl) ctxtArgs [regArg]ₕ
+  Expr.mk (.func funcSig) rfl (le_of_eq rfl) ctxtArgs [body]ₕ
 
 end FuncV

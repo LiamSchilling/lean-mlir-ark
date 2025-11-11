@@ -28,8 +28,8 @@ denote
 | .call funcSig, f ::ₕ fArgs, _ => do
   let res ← f <| fArgs.fromMap' Ty.raise fun _ => id
   return res.map' Ty.raise fun _ => id
-| .func funcSig, ctxtArgs, [regArg]ₕ => [fun fArgs => do
-  let res ← regArg <| .ofHVector <| HVector.append ctxtArgs (fArgs.map' Ty.raise fun _ => id)
+| .func funcSig, ctxtArgs, [body]ₕ => [fun fArgs => do
+  let res ← body <| .ofHVector <| HVector.append ctxtArgs (fArgs.map' Ty.raise fun _ => id)
   return res.fromMap' Ty.raise fun _ => id ]ₕ
 
 end FuncV

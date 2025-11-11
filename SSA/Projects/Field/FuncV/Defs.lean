@@ -83,7 +83,7 @@ def Op.lower : Op Ty' Op' m → Option Op'
 | .call _ => none
 | .func _ => none
 
-/-- A map from operations to the types of their outputs. -/
+/-- A map from operations to the types of their inputs. -/
 @[reducible]
 def Op.sig (sig' : Op' → List Ty') : Op Ty' Op' m → List (Ty Ty' m)
 | .raise op' => sig' op' |>.map .raise

@@ -112,7 +112,7 @@ omit [Field F] in
 lemma op_lower_raise_some : (Op.lower : Op F Op' → Option Op') ∘ .raise = some := by
   ext; simp
 
-/-- A map from operations to the types of their outputs. -/
+/-- A map from operations to the types of their inputs. -/
 @[simp, reducible]
 def Op.sig (sig' : Op' → List Ty') : Op F Op' → List (Ty F Ty' int')
 | .raise op' => sig' op' |>.map .raise
