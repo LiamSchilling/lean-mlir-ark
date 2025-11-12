@@ -17,7 +17,7 @@ This dialect will be the basis for a number of extension dialects
 for objects that contain field elements:
 - Vectors: `Field\Vector\Basic.lean`
 - Univariate polynomials: `Field\UniPoly\Basic.lean`
-- Multilinear polynomials: `Field\MLPoly\Basic.lean`
+- Multilinear polynomials: `Field\MlPoly\Basic.lean`
 
 Instances of `Flop` with specialized fields should be lowered to an integer dialect.
 This will allow the extension dialects to generically lower to a tensor dialect

@@ -3,7 +3,7 @@ import SSA.Projects.Field.Flop.Defs
 /-!
 # Multilinear Polynomial Dialect
 
-Defines a dialect `MLPoly` for multilinear polynomials over a field.
+Defines a dialect `MlPoly` for multilinear polynomials over a field.
 The type system enforces two distinct representations whose members are semantically polynomials:
 - coefficients: a map from monomials
   to their coefficients.
@@ -16,6 +16,6 @@ open LeanMLIR
 
 variable {F : Type} [Field F]
 
-namespace MLPoly
+namespace MlPoly
 
-end MLPoly
+end MlPoly

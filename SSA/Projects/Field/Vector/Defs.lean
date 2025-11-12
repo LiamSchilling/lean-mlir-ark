@@ -7,7 +7,7 @@ Defines a dialect `Vec` for coordinate-representation vectors with components fr
 
 Dialects for polynomials will lower to `Vec`:
 - Univariate polynomials: `Field\UniPoly\Basic.lean`
-- Multilinear polynomials: `Field\MLPoly\Basic.lean`
+- Multilinear polynomials: `Field\MlPoly\Basic.lean`
 -/
 
 open LeanMLIR
