@@ -8,8 +8,8 @@ We begin by defining the lowering paradigm we will follow to transform computati
 
 #### Roadmap
 
-- [ ] [1] Define the type of a lowering from the semantics of `D` to the semantics of `D'`.
-- [ ] [2] Define the type of a computation-to-computation lowering from `D` to `D'` that is correct according to a semantic lowering.
+- [x] [1] Define the type of a lowering from the semantics of `D` to the semantics of `D'`.
+- [x] [2] Define the type of a computation-to-computation lowering from `D` to `D'` that is correct according to a semantic lowering.
 
 ### The inlining pass
 
