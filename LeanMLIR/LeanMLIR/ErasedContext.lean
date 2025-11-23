@@ -119,7 +119,7 @@ instance instAppend : Append (Ctxt Ty) where
   append Γ Δ := ⟨Γ.toList ++ Δ.toList⟩
 
 section Lemmas
-variable {Γ Δ : Ctxt Ty} {tys : List Ty}
+variable {Γ Δ Θ : Ctxt Ty} {tys : List Ty}
 
 @[simp] theorem appendList_eq : Γ ++ tys = Γ ++ ⟨tys⟩ := rfl
 
@@ -133,6 +133,10 @@ variable {Γ Δ : Ctxt Ty} {tys : List Ty}
 theorem getElem?_append :
     (Γ ++ Δ)[i]? = if i < Γ.length then Γ[i]? else Δ[i - Γ.length]? :=
   List.getElem?_append
+
+@[simp, grind _=_] theorem append_assoc : (Γ ++ Δ) ++ Θ = Γ ++ (Δ ++ Θ) := by
+  dsimp only [(· ++ ·), Append.append]
+  simp [List.append_assoc Γ.toList Δ.toList Θ.toList]
 
 end Lemmas
 
@@ -737,6 +741,12 @@ variable {V : Γ.Valuation} {W : Δ.Valuation}
   | right v =>
       rw [append_appendInr, Var.toCons_appendInr]
       simp
+
+def Valuation.fromlAppend : (Γ ++ Δ).Valuation → Γ.Valuation
+| V, _, v => V v.appendInl
+
+def Valuation.fromrAppend : (Γ ++ Δ).Valuation → Δ.Valuation
+| V, _, v => V v.appendInr
 
 /-! ## Valuation ofHVector -/
 
