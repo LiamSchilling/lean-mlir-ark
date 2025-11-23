@@ -142,18 +142,17 @@ that preserves semantics according to a `SumDialectLowerSpecification`.
 -/
 class DialectLower where
   lowerCom (Γ : Ctxt L.Ty) (eff₁ eff₂ : EffectKind) (t : List L.Ty) :
-    Com L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy) → Com L.d' (Γ.map L.mapTy') eff₂ (t.map L.mapTy')
-  lowerCom_refined :
-    ∀ c, c ⊑ lowerCom Γ eff₁ eff₂ t c
+    Com L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy) →
+    Com L.d' (Γ.map L.mapTy') eff₂ (t.map L.mapTy')
+  lowerCom_refined : ∀ c, c ⊑ lowerCom Γ eff₁ eff₂ t c
 
 /--
 A lowering between two dialects
 specified by an expression-to-expression map and a static pure preamble of let bindings.
 -/
 class DialectHomomorphicLower where
-  preamble :
-    Com L.d' .empty .pure []
+  preamble : Com L.d' .empty .pure []
   lowerExpr (Γ : Ctxt L.Ty) (eff₁ eff₂ : EffectKind) (t : List L.Ty) :
-    Expr L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy) → Expr L.d' (Γ.map L.mapTy' ++ preamble.outContext) eff₂ (t.map L.mapTy')
-  lowerExpr_refined :
-    ∀ e, e ⊑ lowerExpr Γ eff₁ eff₂ t e
+    Expr L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy) →
+    Expr L.d' (Γ.map L.mapTy' ++ preamble.outContext) eff₂ (t.map L.mapTy')
+  lowerExpr_refined : ∀ e, e ⊑ lowerExpr Γ eff₁ eff₂ t e
