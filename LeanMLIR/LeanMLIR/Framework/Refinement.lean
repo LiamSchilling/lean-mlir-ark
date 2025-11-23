@@ -305,7 +305,8 @@ section Instances
 
 /-! ### HVector Refinement -/
 namespace HVector
-variable {A : α → Type} {B : β → Type} [∀ a b, HRefinement (A a) (B b)]
+variable {A A' : α → Type} {B : β → Type}
+variable [∀ a b, HRefinement (A a) (B b)] [∀ a, HRefinement (A a) (A' a)]
 
 /--
 We say that a vector of values `xs` is refined by another vector `ys` (written
@@ -317,8 +318,16 @@ def IsRefinedBy {as} {bs} : HVector A as → HVector B bs → Prop
   | .cons x xs, .cons y ys => x ⊑ y ∧ xs.IsRefinedBy ys
   | _, _ => False
 
-instance  : HRefinement (HVector A as) (HVector B bs) where
+/-- An alternative to `IsRefinedBy` where the vectors have the same index list. -/
+def UniformIsRefinedBy {as} : HVector A as → HVector A' as → Prop
+  | .nil, .nil => True
+  | .cons x xs, .cons y ys => x ⊑ y ∧ xs.UniformIsRefinedBy ys
+
+instance : HRefinement (HVector A as) (HVector B bs) where
   IsRefinedBy := HVector.IsRefinedBy
+
+instance : HRefinement (HVector A as) (HVector A' as) where
+  IsRefinedBy := HVector.UniformIsRefinedBy
 
 variable {x : A a} {xs : HVector A as} {y : B b} {ys : HVector B bs}
 
