@@ -2,6 +2,8 @@ import Mathlib.Data.ZMod.Basic
 import LeanMLIR.Basic
 
 /-!
+This file is OUTDATED and will need to be refactored to match the new trajectory of the project.
+
 # Field Dialect
 
 Defines a wrapper dialect `Flop` for algebra over a field.
