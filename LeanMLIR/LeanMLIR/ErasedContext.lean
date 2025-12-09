@@ -102,6 +102,9 @@ variable {m} [Monad m] [LawfulMonad m] (t u : m _) in
 @[simp] theorem map_nil (f : Ty → Ty') : map f ∅ = ∅ := rfl
 @[simp] theorem map_cons : (Γ.cons a).map f = (Γ.map f).cons (f a) := rfl
 
+@[simp] theorem map_id : Γ.map id = Γ := by simp [map]
+@[simp, grind _=_] theorem map_map {Γ : Ctxt Ty} : (Γ.map f).map g = Γ.map (g ∘ f) := by simp [map]
+
 @[simp] theorem getElem?_map (Γ : Ctxt Ty) (f : Ty → Ty') (i : Nat) :
     (Γ.map f)[i]? = Γ[i]?.map f := by
   simp [map]; rfl
@@ -122,6 +125,11 @@ section Lemmas
 variable {Γ Δ Θ : Ctxt Ty} {tys : List Ty}
 
 @[simp] theorem appendList_eq : Γ ++ tys = Γ ++ ⟨tys⟩ := rfl
+
+@[simp, grind =] theorem empty_append (Γ : Ctxt Ty) : ∅ ++ Γ = Γ := rfl
+@[simp, grind =] theorem append_empty (Γ : Ctxt Ty) : Γ ++ ∅ = Γ := by
+  dsimp only [(· ++ ·), Append.append, EmptyCollection.emptyCollection, empty]
+  simp
 
 @[simp] theorem toList_append : (Γ ++ Δ).toList = Γ.toList ++ Δ.toList := rfl
 @[simp] theorem ofList_append {ts us : List Ty} :

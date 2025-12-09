@@ -1,6 +1,10 @@
 import LeanMLIR.Framework.Basic
 import LeanMLIR.Framework.Refinement
 
+variable {d d' : Dialect}
+variable [TyDenote d.Ty] [TyDenote d'.Ty]
+variable [DialectSignature d] [DialectSignature d']
+
 /--
 `DialectLowerSpecification` specifies how types in two dialects correspond,
 and how to compare members of corresponding types for semantic equivalence.
@@ -30,6 +34,41 @@ structure DialectLowerSpecification (d d' : Dialect) [TyDenote d.Ty] [TyDenote d
 attribute [instance, simp, simp_denote] DialectLowerSpecification.IsRefinedBy
 attribute [instance, simp, simp_denote] DialectLowerSpecification.MonadIsRefinedBy
 
+variable (LS : DialectLowerSpecification d d')
+
+/--
+A witness that a `DialectLowerSpecification` is *signature deterministic* (`Sigdet`).
+That is, every type in the source dialect `d` maps to one type in the target dialect `d'`.
+
+This is enforced by giving the producer of corresponding types in `d` an inverse `invMapTy`.
+Composing `invMapTy` with the producer of corresponding types in `d'` yields the deterministic map.
+-/
+class SigdetDialectLowerSpecification where
+  invMapTy : d.Ty → LS.Ty
+  invMapTy_rinv : ∀ {t}, LS.mapTy (invMapTy t) = t
+  invMapTy_linv : ∀ {t}, invMapTy (LS.mapTy t) = t
+
+variable [SD : SigdetDialectLowerSpecification LS]
+
+namespace SigdetDialectLowerSpecification
+
+omit [DialectSignature d] [DialectSignature d']
+variable {LS : DialectLowerSpecification d d'} [SD : SigdetDialectLowerSpecification LS]
+
+abbrev fullMapTy :=
+  LS.mapTy' ∘ SD.invMapTy
+
+theorem mapTy_invMapTy_eq_id : LS.mapTy ∘ SD.invMapTy = id := by
+  ext; simp [invMapTy_rinv]
+
+theorem invMapTy_mapTy_eq_id : SD.invMapTy ∘ LS.mapTy = id := by
+  ext; simp [invMapTy_linv]
+
+theorem fullMapTy_mapTy_eq_mapTy' : SD.fullMapTy ∘ LS.mapTy = LS.mapTy' := by
+  ext; simp [invMapTy_linv]
+
+end SigdetDialectLowerSpecification
+
 /--
 A version of `DialectLowerSpecification` that bundles the dialects with the specification.
 
@@ -53,16 +92,13 @@ variable [Monad L.d.m] [Monad L.d'.m]
 variable [DialectSignature L.d] [DialectSignature L.d']
 variable [DialectDenote L.d] [DialectDenote L.d']
 
-@[reducible]
-def SumDialectLowerSpecification.Ty :=
+abbrev SumDialectLowerSpecification.Ty :=
   L.spec.Ty
 
-@[reducible]
-def SumDialectLowerSpecification.mapTy :=
+abbrev SumDialectLowerSpecification.mapTy :=
   L.spec.mapTy
 
-@[reducible]
-def SumDialectLowerSpecification.mapTy' :=
+abbrev SumDialectLowerSpecification.mapTy' :=
   L.spec.mapTy'
 
 instance [HRefinement α β] : HRefinement (L.d.m α) (L.d'.m β) :=
@@ -92,10 +128,10 @@ instance {Γ : Ctxt L.Ty} {t : List L.Ty} :
       Ctxt.map_append _ _ _ ▸ e₂.outContext_eq ▸ e₂.denote V₂
 
 /--
-A version of the previous instance that assumes a static pure preamble computation
+A version of the previous instance that assumes a pure preamble of let bindings
 in the context of the right-hand expression.
 -/
-instance {Γ : Ctxt L.Ty} {t : List L.Ty} (preamble : Com L.d' .empty .pure []) :
+instance {Γ : Ctxt L.Ty} {t : List L.Ty} (preamble : Com L.d' ∅ .pure []) :
     HRefinement
       (Expr L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy))
       (Expr L.d' (Γ.map L.mapTy' ++ preamble.outContext) eff₂ (t.map L.mapTy')) where
@@ -122,10 +158,10 @@ instance {Γ : Ctxt L.Ty} {t : List L.Ty} :
       HVector.castFromMap L.mapTy' rfl <$> c₂.denote V₂
 
 /--
-A version of the previous instance that assumes a static pure preamble computation
+A version of the previous instance that assumes a pure preamble of let bindings
 in the context of the right-hand computation.
 -/
-instance {Γ : Ctxt L.Ty} {t : List L.Ty} (preamble : Com L.d' .empty .pure []) :
+instance {Γ : Ctxt L.Ty} {t : List L.Ty} (preamble : Com L.d' ∅ .pure []) :
     HRefinement
       (Com L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy))
       (Com L.d' (Γ.map L.mapTy' ++ preamble.outContext) eff₂ (t.map L.mapTy')) where
@@ -148,11 +184,70 @@ class DialectLower where
 
 /--
 A lowering between two dialects
-specified by an expression-to-expression map and a static pure preamble of let bindings.
+that preserves semantics according to a `SumDialectLowerSpecification`,
+specified by an expression-to-expression map and a constant preamble.
 -/
 class DialectHomomorphicLower where
-  preamble : Com L.d' .empty .pure []
+  preamble : Com L.d' ∅ .pure []
   lowerExpr (Γ : Ctxt L.Ty) (eff₁ eff₂ : EffectKind) (t : List L.Ty) :
     Expr L.d (Γ.map L.mapTy) eff₁ (t.map L.mapTy) →
     Expr L.d' (Γ.map L.mapTy' ++ preamble.outContext) eff₂ (t.map L.mapTy')
   lowerExpr_refined : ∀ e, e ⊑ lowerExpr Γ eff₁ eff₂ t e
+
+namespace Com
+
+/--
+Transform a computation according to an expression-to-expression map with inserted context `Δ`,
+then apply the continuation `k` to the resulting computation with with inserted context `Δ`.
+-/
+def mapExprCPS
+    (Γ : Ctxt LS.Ty) (eff₁ eff₂ : EffectKind) (t : List LS.Ty)
+    (mapExpr : ∀ (Γ : Ctxt LS.Ty) (eff₁ eff₂ : EffectKind) (t : List LS.Ty),
+      Expr d (Γ.map LS.mapTy) eff₁ (t.map LS.mapTy) →
+      Expr d' (Γ.map LS.mapTy' ++ Δ) eff₂ (t.map LS.mapTy') )
+    (k : Com d' (Γ.map LS.mapTy' ++ Δ) eff₂ (t.map LS.mapTy') → α) :
+    Com d (Γ.map LS.mapTy) eff₁ (t.map LS.mapTy) → α
+| .rets vs =>
+  k <| .rets <|
+    SD.fullMapTy_mapTy_eq_mapTy' ▸ List.map_map ▸
+    vs.map' SD.fullMapTy fun _ v => Ctxt.map_map ▸ v.toMap.appendInl
+| @Com.var _ _ _ _ t' _ e body =>
+  mapExprCPS (t'.map SD.invMapTy ++ Γ) eff₁ eff₂ t mapExpr (fun body' => k <| .var (
+      mapExpr Γ eff₁ eff₂ _ <| List.map_map.symm ▸ SD.mapTy_invMapTy_eq_id ▸ List.map_id _ ▸ e ) <|
+      Ctxt.append_assoc ▸ Ctxt.map_append _ _ _ ▸ body' ) <|
+    Ctxt.map_append _ _ _ ▸ Ctxt.map_map.symm ▸ SD.mapTy_invMapTy_eq_id ▸ Ctxt.map_id _ ▸ body
+decreasing_by sorry
+
+/--
+Append a computation to the tail of a pure preamble of let bindings.
+The context of the input computation is permitted the let bindings from the preamble,
+and the appendage of the preamble dissolves this part of the context in the result computation.
+-/
+def appendPreamble
+    (Γ : Ctxt LS.Ty) (eff₁ eff₂ : EffectKind) (t : List LS.Ty) :
+    ∀ preamble : Com d' Δ .pure [],
+    Com d' (Γ.map LS.mapTy' ++ preamble.outContext) eff₂ (t.map LS.mapTy') →
+    Com d' (Γ.map LS.mapTy' ++ Δ) eff₂ (t.map LS.mapTy')
+| .rets []ₕ, body => body
+| @Com.var _ _ _ _ t' _ e preamble', body => .var sorry (appendPreamble Γ eff₁ eff₂ t sorry sorry)
+decreasing_by sorry
+
+/--
+Transform a computation according to an expression-to-expression map
+with inserted context from a pure preamble of let bindings,
+then append the resulting computation to the tail of the preamble,
+dissolving the inserted context.
+
+This is essentially `mapExprCPS` with `appendPreamble` as its continuation.
+-/
+def mapExprWithPreamble
+    (Γ : Ctxt LS.Ty) (eff₁ eff₂ : EffectKind) (t : List LS.Ty)
+    (preamble : Com d' Δ .pure [])
+    (mapExpr : ∀ (Γ : Ctxt LS.Ty) (eff₁ eff₂ : EffectKind) (t : List LS.Ty),
+      Expr d (Γ.map LS.mapTy) eff₁ (t.map LS.mapTy) →
+      Expr d' (Γ.map LS.mapTy' ++ preamble.outContext) eff₂ (t.map LS.mapTy') ) :
+    Com d (Γ.map LS.mapTy) eff₁ (t.map LS.mapTy) →
+    Com d' (Γ.map LS.mapTy' ++ Δ) eff₂ (t.map LS.mapTy') :=
+  mapExprCPS LS Γ eff₁ eff₂ t mapExpr (appendPreamble LS Γ eff₁ eff₂ t preamble)
+
+end Com
